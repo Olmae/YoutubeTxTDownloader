@@ -1,56 +1,53 @@
-import yt_dlp as youtube_dl  # Используем yt-dlp вместо youtube_dl
 import os
-import shutil
-
-# Путь к папке "Плейлист" в директории скрипта
-playlist_folder = os.path.join(os.getcwd(), 'Плейлист')
-
-# Создаём папку, если она не существует
-if not os.path.exists(playlist_folder):
-    os.makedirs(playlist_folder)
+import yt_dlp as youtube_dl
 
 # Чтение списка песен из файла
 with open('songs.txt', 'r', encoding='utf-8') as file:
     songs = file.readlines()
 
+# Путь к папке "Плейлист" в репозитории
+playlist_dir = os.path.join(os.path.dirname(__file__), 'Плейлист')
+os.makedirs(playlist_dir, exist_ok=True)  # Создаем папку, если она не существует
+
 # Настройки для yt-dlp
 ydl_opts = {
-    'format': 'bestaudio/best',
-    'postprocessors': [{
-        'key': 'FFmpegExtractAudio',
-        'preferredcodec': 'mp3',
-        'preferredquality': '192',
-    }],
+    'format': 'bestvideo+bestaudio/best',  # Скачиваем лучшее видео и аудио
     'default_search': 'ytsearch',  # Поиск по названию
     'noplaylist': True,  # Отключаем скачивание плейлистов
-    'ffmpeg_location': os.path.join(os.getcwd(), 'ffmpeg-7.0-full_build', 'bin'),  # Путь к ffmpeg
-    'outtmpl': os.path.join(playlist_folder, '%(title)s.%(ext)s'),  # Путь сохранения треков в папку "Плейлист"
+    'outtmpl': os.path.join(playlist_dir, '%(title)s.%(ext)s'),  # Сохраняем файлы в папку "Плейлист"
+    'ffmpeg_location': os.path.join(os.getcwd(), 'ffmpeg-7.0-full_build/bin'),  # Путь к ffmpeg
 }
 
-downloaded_tracks = set()  # Множество для хранения названий уже скачанных треков
+# Хранение уже скачанных треков для проверки дубликатов
+downloaded_songs = set()
 
-# Файл для записи логов скачивания
-with open('download_log.txt', 'w', encoding='utf-8') as log_file:
+# Открываем файл для записи информации о скачанных треках
+with open('downloaded_songs.txt', 'w', encoding='utf-8') as log_file:
     for song in songs:
         song = song.strip()  # Удаляем лишние пробелы и символы новой строки
         if not song:
             continue
-        if song in downloaded_tracks:
-            print(f'Трек уже скачан: {song}')
-            continue  # Пропускаем трек, если он уже был скачан
 
-        print(f'Ищем и скачиваем: {song}')
-        try:
-            with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-                result = ydl.extract_info(song, download=True)  # Поиск и скачивание песни
-                downloaded_tracks.add(song)  # Добавляем трек в множество скачанных
+        # Добавляем приписку "караоке" к названию
+        search_query = f'{song} караоке'
 
-                # Получаем название трека и ссылку
-                track_title = result.get('title', 'Unknown Title')
-                track_url = result.get('webpage_url', 'Unknown URL')
+        # Проверяем на дубликат
+        if search_query in downloaded_songs:
+            print(f'Трек уже скачан: {search_query}')
+            continue
 
-                # Записываем информацию в лог
-                log_file.write(f'{song} -> {track_title}: {track_url}\n')
+        print(f'Ищем и скачиваем: {search_query}')
+        with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+            try:
+                # Поиск и скачивание видео
+                result = ydl.extract_info(search_query, download=True)
+                video_title = result.get('title', 'Без названия')
+                video_url = result.get('webpage_url', 'Неизвестно')
 
-        except Exception as e:
-            print(f'Ошибка при скачивании {song}: {e}')
+                # Записываем информацию о треке в лог-файл
+                log_file.write(f'Запрос: {song}\nНазвание: {video_title}\nСсылка: {video_url}\n\n')
+
+                # Добавляем трек в список скачанных
+                downloaded_songs.add(search_query)
+            except Exception as e:
+                print(f'Ошибка при скачивании {search_query}: {e}')
