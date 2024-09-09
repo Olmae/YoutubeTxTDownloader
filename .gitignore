@@ -1,0 +1,12 @@
+*.mp3
+*.webm
+.webm
+.mp3
+*.txt
+.txt
+ffmpeg.exe
+ffplay.exe
+ffprobe.exe
+ffmpeg-7.0-full_build/bin/ffmpeg.exe
+ffmpeg-7.0-full_build/bin/ffplay.exe
+ffmpeg-7.0-full_build/bin/ffprobe.exe
